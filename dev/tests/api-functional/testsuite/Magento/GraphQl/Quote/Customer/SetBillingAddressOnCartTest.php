@@ -405,8 +405,6 @@ QUERY;
 
     /**
      * @magentoApiDataFixture Magento/Checkout/_files/quote_with_multiple_addresses_saved.php
-     * @magentoApiDataFixture Magento/Customer/_files/customer.php
-     * @magentoApiDataFixture Magento/Customer/_files/customer_two_addresses.php
      * @throws \Exception
      */
     public function testSetBillingAddressWithUseForShippingOptionForMultipleAddresses()
