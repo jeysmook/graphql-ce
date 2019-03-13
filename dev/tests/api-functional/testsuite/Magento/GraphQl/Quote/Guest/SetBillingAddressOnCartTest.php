@@ -7,7 +7,10 @@ declare(strict_types=1);
 
 namespace Magento\GraphQl\Quote\Guest;
 
+use Magento\Quote\Api\CartRepositoryInterface;
 use Magento\Quote\Model\QuoteFactory;
+use Magento\Quote\Model\Quote;
+use Magento\Quote\Model\Quote\Address;
 use Magento\Quote\Model\QuoteIdToMaskedQuoteIdInterface;
 use Magento\Quote\Model\ResourceModel\Quote as QuoteResource;
 use Magento\TestFramework\Helper\Bootstrap;
@@ -33,12 +36,24 @@ class SetBillingAddressOnCartTest extends GraphQlAbstract
      */
     private $quoteIdToMaskedId;
 
+    /**
+     * @var CartRepositoryInterface
+     */
+    private $quoteRepository;
+
+    /**
+     * @var Address
+     */
+    private $quoteShippingAddress;
+
     protected function setUp()
     {
         $objectManager = Bootstrap::getObjectManager();
         $this->quoteResource = $objectManager->get(QuoteResource::class);
         $this->quoteFactory = $objectManager->get(QuoteFactory::class);
         $this->quoteIdToMaskedId = $objectManager->get(QuoteIdToMaskedQuoteIdInterface::class);
+        $this->quoteRepository = $objectManager->get(CartRepositoryInterface::class);
+        $this->quoteShippingAddress = $objectManager->get(Address::class);
     }
 
     /**
@@ -172,12 +187,38 @@ QUERY;
     }
 
     /**
-     * @magentoApiDataFixture Magento/Checkout/_files/guest_quote_with_multiple_addresses_saved.php
+     * @magentoApiDataFixture Magento/Sales/_files/guest_quote_with_addresses.php
      * @throws \Exception
      */
     public function testSetBillingAddressWithUseForShippingOptionForMultipleAddresses()
     {
-        $maskedQuoteId = $this->getMaskedQuoteIdByReversedQuoteId('test_order_with_simple_product_multiple_addresses');
+        $maskedQuoteId = $this->getMaskedQuoteIdByReversedQuoteId('guest_quote');
+
+        /** @var Quote $quote */
+        $quote = $this->quoteFactory->create();
+        $this->quoteResource->load($quote, 'guest_quote', 'reserved_order_id');
+
+        /** @var \Magento\Quote\Model\Quote\Address $quoteShippingAddress */
+        $quoteShippingAddress = $this->quoteShippingAddress;
+
+        $quoteShippingAddress->setData([
+            'attribute_set_id' => 2,
+            'telephone' => 3468676,
+            'postcode' => 75477,
+            'country_id' => 'US',
+            'city' => 'CityM',
+            'company' => 'CompanyName',
+            'street' => 'Green str, 67',
+            'lastname' => 'Smith',
+            'firstname' => 'John',
+            'parent_id' => 1,
+            'region_id' => 1,
+        ]);
+
+        $quote->setIsMultiShipping(1)
+            ->setShippingAddress($quoteShippingAddress);
+
+        $this->quoteRepository->save($quote);
 
         $query = <<<QUERY
 mutation {

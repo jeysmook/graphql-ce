@@ -8,9 +8,12 @@ declare(strict_types=1);
 namespace Magento\GraphQl\Quote\Customer;
 
 use Magento\Integration\Api\CustomerTokenServiceInterface;
+use Magento\Quote\Api\CartRepositoryInterface;
+use Magento\Quote\Model\Quote;
 use Magento\Quote\Model\QuoteFactory;
 use Magento\Quote\Model\QuoteIdToMaskedQuoteIdInterface;
 use Magento\Quote\Model\ResourceModel\Quote as QuoteResource;
+use Magento\Quote\Model\Quote\Address;
 use Magento\TestFramework\Helper\Bootstrap;
 use Magento\TestFramework\TestCase\GraphQlAbstract;
 
@@ -35,6 +38,16 @@ class SetBillingAddressOnCartTest extends GraphQlAbstract
     private $quoteIdToMaskedId;
 
     /**
+     * @var CartRepositoryInterface
+     */
+    private $quoteRepository;
+
+    /**
+     * @var Address
+     */
+    private $quoteShippingAddress;
+
+    /**
      * @var CustomerTokenServiceInterface
      */
     private $customerTokenService;
@@ -44,7 +57,9 @@ class SetBillingAddressOnCartTest extends GraphQlAbstract
         $objectManager = Bootstrap::getObjectManager();
         $this->quoteResource = $objectManager->get(QuoteResource::class);
         $this->quoteFactory = $objectManager->get(QuoteFactory::class);
+        $this->quoteRepository = $objectManager->get(CartRepositoryInterface::class);
         $this->quoteIdToMaskedId = $objectManager->get(QuoteIdToMaskedQuoteIdInterface::class);
+        $this->quoteShippingAddress = $objectManager->get(Address::class);
         $this->customerTokenService = $objectManager->get(CustomerTokenServiceInterface::class);
     }
 
@@ -404,12 +419,39 @@ QUERY;
     }
 
     /**
-     * @magentoApiDataFixture Magento/Checkout/_files/quote_with_multiple_addresses_saved.php
+     * @magentoApiDataFixture Magento/Checkout/_files/quote_with_address_saved.php
+     * @magentoApiDataFixture Magento/Customer/_files/customer_two_addresses.php
      * @throws \Exception
      */
     public function testSetBillingAddressWithUseForShippingOptionForMultipleAddresses()
     {
         $maskedQuoteId = $this->getMaskedQuoteIdByReversedQuoteId('test_order_1');
+
+        /** @var Quote $quote */
+        $quote = $this->quoteFactory->create();
+        $this->quoteResource->load($quote, 'test_order_1', 'reserved_order_id');
+
+        /** @var \Magento\Quote\Model\Quote\Address $quoteShippingAddress */
+        $quoteShippingAddress = $this->quoteShippingAddress;
+
+        $quoteShippingAddress->setData([
+            'attribute_set_id' => 2,
+            'telephone' => 3468676,
+            'postcode' => 75477,
+            'country_id' => 'US',
+            'city' => 'CityM',
+            'company' => 'CompanyName',
+            'street' => 'Green str, 67',
+            'lastname' => 'Smith',
+            'firstname' => 'John',
+            'parent_id' => 1,
+            'region_id' => 1,
+        ]);
+
+        $quote->setIsMultiShipping(1)
+            ->setShippingAddress($quoteShippingAddress);
+
+        $this->quoteRepository->save($quote);
 
         $query = <<<QUERY
 mutation {
@@ -417,8 +459,19 @@ mutation {
     input: {
       cart_id: "$maskedQuoteId"
       billing_address: {
-          customer_address_id: 2
-          use_for_shipping: true
+        address: {
+          firstname: "test firstname"
+          lastname: "test lastname"
+          company: "test company"
+          street: ["test street 1", "test street 2"]
+          city: "test city"
+          region: "test region"
+          postcode: "887766"
+          country_code: "US"
+          telephone: "88776655"
+          save_in_address_book: false
+        }
+        use_for_shipping: true
        }
     }
   ) {
