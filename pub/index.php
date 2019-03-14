@@ -24,6 +24,13 @@ HTML;
     exit(1);
 }
 
+// Patch start
+$coverage = new \SebastianBergmann\CodeCoverage\CodeCoverage;
+$coverage->filter()->addDirectoryToWhitelist('../app/code/Magento/*GraphQl');
+$id = md5(mt_rand());
+$coverage->start($id);
+// Patch end
+
 $params = $_SERVER;
 $params[Bootstrap::INIT_PARAM_FILESYSTEM_DIR_PATHS] = array_replace_recursive(
     $params[Bootstrap::INIT_PARAM_FILESYSTEM_DIR_PATHS] ?? [],
@@ -38,3 +45,9 @@ $bootstrap = \Magento\Framework\App\Bootstrap::create(BP, $params);
 /** @var \Magento\Framework\App\Http $app */
 $app = $bootstrap->createApplication(\Magento\Framework\App\Http::class);
 $bootstrap->run($app);
+
+// Patch start
+$coverage->stop();
+$writer = new \SebastianBergmann\CodeCoverage\Report\PHP();
+$writer->process($coverage, '../var/coverage/reports/' . $id . '.cov');
+// Patch end
