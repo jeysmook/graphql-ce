@@ -1,4 +1,7 @@
 sudo: required
+branches:
+  only:
+    - graphql-api-functional-coverage
 dist: trusty
 group: edge
 addons:
