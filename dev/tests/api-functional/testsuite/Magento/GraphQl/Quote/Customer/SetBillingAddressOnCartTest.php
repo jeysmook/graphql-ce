@@ -8,8 +8,6 @@ declare(strict_types=1);
 namespace Magento\GraphQl\Quote\Customer;
 
 use Magento\Integration\Api\CustomerTokenServiceInterface;
-use Magento\Quote\Api\CartRepositoryInterface;
-use Magento\Quote\Model\Quote;
 use Magento\Quote\Model\QuoteFactory;
 use Magento\Quote\Model\QuoteIdToMaskedQuoteIdInterface;
 use Magento\Quote\Model\ResourceModel\Quote as QuoteResource;
@@ -38,11 +36,6 @@ class SetBillingAddressOnCartTest extends GraphQlAbstract
     private $quoteIdToMaskedId;
 
     /**
-     * @var CartRepositoryInterface
-     */
-    private $quoteRepository;
-
-    /**
      * @var Address
      */
     private $quoteShippingAddress;
@@ -57,7 +50,6 @@ class SetBillingAddressOnCartTest extends GraphQlAbstract
         $objectManager = Bootstrap::getObjectManager();
         $this->quoteResource = $objectManager->get(QuoteResource::class);
         $this->quoteFactory = $objectManager->get(QuoteFactory::class);
-        $this->quoteRepository = $objectManager->get(CartRepositoryInterface::class);
         $this->quoteIdToMaskedId = $objectManager->get(QuoteIdToMaskedQuoteIdInterface::class);
         $this->quoteShippingAddress = $objectManager->get(Address::class);
         $this->customerTokenService = $objectManager->get(CustomerTokenServiceInterface::class);
@@ -423,35 +415,9 @@ QUERY;
      * @magentoApiDataFixture Magento/Customer/_files/customer_two_addresses.php
      * @throws \Exception
      */
-    public function testSetBillingAddressWithUseForShippingOptionForMultipleAddresses()
+    public function testSetBillingAddressWithUseForShippingOption()
     {
         $maskedQuoteId = $this->getMaskedQuoteIdByReversedQuoteId('test_order_1');
-
-        /** @var Quote $quote */
-        $quote = $this->quoteFactory->create();
-        $this->quoteResource->load($quote, 'test_order_1', 'reserved_order_id');
-
-        /** @var \Magento\Quote\Model\Quote\Address $quoteShippingAddress */
-        $quoteShippingAddress = $this->quoteShippingAddress;
-
-        $quoteShippingAddress->setData([
-            'attribute_set_id' => 2,
-            'telephone' => 3468676,
-            'postcode' => 75477,
-            'country_id' => 'US',
-            'city' => 'CityM',
-            'company' => 'CompanyName',
-            'street' => 'Green str, 67',
-            'lastname' => 'Smith',
-            'firstname' => 'John',
-            'parent_id' => 1,
-            'region_id' => 1,
-        ]);
-
-        $quote->setIsMultiShipping(1)
-            ->setShippingAddress($quoteShippingAddress);
-
-        $this->quoteRepository->save($quote);
 
         $query = <<<QUERY
 mutation {
@@ -493,9 +459,6 @@ mutation {
   }
 }
 QUERY;
-        $this->expectExceptionMessage(
-            "Using the \"use_for_shipping\" option with multishipping is not possible."
-        );
         $this->graphQlQuery($query, [], '', $this->getHeaderMap());
     }
 
