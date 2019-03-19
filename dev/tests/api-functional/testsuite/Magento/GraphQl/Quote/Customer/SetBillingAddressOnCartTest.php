@@ -11,7 +11,6 @@ use Magento\Integration\Api\CustomerTokenServiceInterface;
 use Magento\Quote\Model\QuoteFactory;
 use Magento\Quote\Model\QuoteIdToMaskedQuoteIdInterface;
 use Magento\Quote\Model\ResourceModel\Quote as QuoteResource;
-use Magento\Quote\Model\Quote\Address;
 use Magento\TestFramework\Helper\Bootstrap;
 use Magento\TestFramework\TestCase\GraphQlAbstract;
 
@@ -36,11 +35,6 @@ class SetBillingAddressOnCartTest extends GraphQlAbstract
     private $quoteIdToMaskedId;
 
     /**
-     * @var Address
-     */
-    private $quoteShippingAddress;
-
-    /**
      * @var CustomerTokenServiceInterface
      */
     private $customerTokenService;
@@ -51,7 +45,6 @@ class SetBillingAddressOnCartTest extends GraphQlAbstract
         $this->quoteResource = $objectManager->get(QuoteResource::class);
         $this->quoteFactory = $objectManager->get(QuoteFactory::class);
         $this->quoteIdToMaskedId = $objectManager->get(QuoteIdToMaskedQuoteIdInterface::class);
-        $this->quoteShippingAddress = $objectManager->get(Address::class);
         $this->customerTokenService = $objectManager->get(CustomerTokenServiceInterface::class);
     }
 
