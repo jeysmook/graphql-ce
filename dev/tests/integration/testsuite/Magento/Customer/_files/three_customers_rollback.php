@@ -6,42 +6,38 @@
 
 use Magento\Integration\Model\Oauth\Token\RequestThrottler;
 
+$objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
+
 /** @var \Magento\Framework\Registry $registry */
-$registry = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->get(\Magento\Framework\Registry::class);
+$registry = $objectManager->get(\Magento\Framework\Registry::class);
 $registry->unregister('isSecureArea');
 $registry->register('isSecureArea', true);
 
-/** @var $customer \Magento\Customer\Model\Customer*/
-$customer1 = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create(
-    \Magento\Customer\Model\Customer::class
-);
-$customer1->load(1);
-if ($customer1->getId()) {
-    $customer1->delete();
-}
+$customersToRemove = [
+    'customer@search.example.com',
+    'customer2@search.example.com',
+    'customer3@search.example.com',
+];
 
-$customer2 = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create(
-    \Magento\Customer\Model\Customer::class
-);
-$customer2->load(2);
-if ($customer2->getId()) {
-    $customer2->delete();
-}
+/**
+ * @var Magento\Customer\Api\CustomerRepositoryInterface
+ */
+$customerRepository = $objectManager->create(\Magento\Customer\Api\CustomerRepositoryInterface::class);
+/**
+ * @var RequestThrottler $throttler
+ */
+$throttler = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create(RequestThrottler::class);
+foreach ($customersToRemove as $customerEmail) {
+    try {
+        $customer = $customerRepository->get($customerEmail);
+        $customerRepository->delete($customer);
+    } catch (\Magento\Framework\Exception\NoSuchEntityException $exception) {
+        // not found
+    }
 
-$customer3 = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create(
-    \Magento\Customer\Model\Customer::class
-);
-$customer3->load(3);
-if ($customer3->getId()) {
-    $customer3->delete();
+    /* Unlock account if it was locked for tokens retrieval */
+    $throttler->resetAuthenticationFailuresCount($customerEmail, RequestThrottler::USER_TYPE_CUSTOMER);
 }
 
 $registry->unregister('isSecureArea');
 $registry->register('isSecureArea', false);
-
-/* Unlock account if it was locked for tokens retrieval */
-/** @var RequestThrottler $throttler */
-$throttler = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create(RequestThrottler::class);
-$throttler->resetAuthenticationFailuresCount('customer@search.example.com', RequestThrottler::USER_TYPE_CUSTOMER);
-$throttler->resetAuthenticationFailuresCount('customer2@search.example.com', RequestThrottler::USER_TYPE_CUSTOMER);
-$throttler->resetAuthenticationFailuresCount('customer3@search.example.com', RequestThrottler::USER_TYPE_CUSTOMER);

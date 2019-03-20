@@ -6,24 +6,29 @@
 
 use Magento\Integration\Model\Oauth\Token\RequestThrottler;
 
+$objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
+$customerEmail = 'customer@example.com';
+
 /** @var \Magento\Framework\Registry $registry */
-$registry = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->get(\Magento\Framework\Registry::class);
+$registry = $objectManager->get(\Magento\Framework\Registry::class);
 $registry->unregister('isSecureArea');
 $registry->register('isSecureArea', true);
 
-/** @var $customer \Magento\Customer\Model\Customer*/
-$customer = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create(
-    \Magento\Customer\Model\Customer::class
-);
-$customer->load(1);
-if ($customer->getId()) {
-    $customer->delete();
+/**
+ * @var Magento\Customer\Api\CustomerRepositoryInterface
+ */
+$customerRepository = $objectManager->create(\Magento\Customer\Api\CustomerRepositoryInterface::class);
+try {
+    $customer = $customerRepository->get($customerEmail);
+    $customerRepository->delete($customer);
+} catch (\Magento\Framework\Exception\NoSuchEntityException $exception) {
+    // not found
 }
-
-$registry->unregister('isSecureArea');
-$registry->register('isSecureArea', false);
 
 /* Unlock account if it was locked for tokens retrieval */
 /** @var RequestThrottler $throttler */
 $throttler = \Magento\TestFramework\Helper\Bootstrap::getObjectManager()->create(RequestThrottler::class);
-$throttler->resetAuthenticationFailuresCount('customer@example.com', RequestThrottler::USER_TYPE_CUSTOMER);
+$throttler->resetAuthenticationFailuresCount($customerEmail, RequestThrottler::USER_TYPE_CUSTOMER);
+
+$registry->unregister('isSecureArea');
+$registry->register('isSecureArea', false);
